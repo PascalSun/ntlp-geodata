@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ntlp-geodata"
+version = "0.1.0"
+description = "Python client for the NTLP Geo Data Platform API"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "NTLP, The University of Western Australia" }]
+keywords = ["geoscience", "Western Australia", "drillholes", "WAMEX", "HyLogger", "API client"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Topic :: Scientific/Engineering :: GIS",
+  "Intended Audience :: Science/Research",
+]
+dependencies = ["httpx>=0.24"]
+
+[project.optional-dependencies]
+pandas = ["pandas>=1.5"]
+test = ["pytest>=7", "respx>=0.20"]
+
+[project.urls]
+Homepage = "https://geo.nlp-tlp.org"
+Documentation = "https://geo.nlp-tlp.org/docs"
+Source = "https://github.com/PascalSun/ntlp-geodata"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ntlp_geodata"]
