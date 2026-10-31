@@ -49,6 +49,9 @@ gd.download(job["url"], "drillholes.csv")
 for r in gd.wamex(121.47, -30.75, nearby=True, radius_km=10):
     print(r["anumber"], r["year"], r["title"])
 gd.report_files("A38751")                               # PDF and data-file links
+m = gd.report_manifest(["A38751", "A6467"])             # many reports: every file, sizes, totals
+print(m["files"], "files,", m["bytes"] / 1e9, "GB")
+gd.download_reports(["A38751", "A6467"], "wamex/")       # into wamex/A<n>/, resumable
 
 # core scans
 holes = list(gd.core_holes(state="WA"))

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-10-31
+
+- `report_manifest(anumbers)`: every file of many WAMEX reports with sizes and download links, in one manifest.
+- `download_reports(anumbers, dest)`: downloads every file of many reports into `dest/A<n>/`, several at a time; re-running skips what is already complete.
+- `report_files` and `doc_files` now work with a personal token (fixed on the platform).
+
 ## 0.1.0 — 2026-10-10
 
 First public release, moved out of the platform repository and renamed from `geodata`.

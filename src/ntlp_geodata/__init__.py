@@ -12,7 +12,7 @@
 Responses are plain dicts. Paged endpoints come back as iterators over all rows; pass
 `max_rows` to stop early. A 429 is retried after the server's Retry-After (up to `retries`).
 """
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from .client import GeoData, GeoDataError  # noqa: E402 - __version__ first: the client reads it
 
