@@ -193,3 +193,45 @@ def test_to_dataframe_flattens_point_features():
                                 "properties": {"name": "H1"}}])
     assert isinstance(df, pd.DataFrame)
     assert list(df.columns) == ["name", "lon", "lat"]
+
+
+@respx.mock
+def test_report_manifest_asks_in_chunks_and_adds_up():
+    import json
+    seen = []
+
+    def handler(request):
+        anums = json.loads(request.content)["anumbers"]
+        seen.append(anums)
+        return httpx.Response(200, json={
+            "reports": [{"anumber": a, "count": 1, "bytes": 10, "files": []} for a in anums if a != "A9"],
+            "not_found": ["A9"] if "A9" in anums else [], "invalid": [], "failed": [],
+            "count": len([a for a in anums if a != "A9"]), "files": 1, "bytes": 10})
+
+    respx.post(f"{BASE}/geo/api/wamex/report_files/batch/").mock(side_effect=handler)
+    m = GeoData(base_url=BASE).report_manifest(["A1", "A2", "A2", "A9"], chunk=2)
+    assert seen == [["A1", "A2"], ["A9"]]          # duplicates folded, 2 a call
+    assert (m["count"], m["files"], m["bytes"], m["not_found"]) == (2, 2, 20, ["A9"])
+
+
+@respx.mock
+def test_download_reports_writes_skips_and_reports_failures(tmp_path):
+    files = [{"name": "a.pdf", "bytes": 3, "download_url": "https://s3.test/a"},
+             {"name": "b.zip", "bytes": 4, "download_url": "https://s3.test/b"},
+             {"name": "c.txt", "bytes": 5, "download_url": "https://s3.test/c"}]
+    respx.post(f"{BASE}/geo/api/wamex/report_files/batch/").mock(return_value=httpx.Response(200, json={
+        "reports": [{"anumber": "A1", "count": 3, "bytes": 12, "files": files}],
+        "not_found": [], "invalid": ["x"], "failed": [], "count": 1, "files": 3, "bytes": 12}))
+    respx.get("https://s3.test/a").mock(return_value=httpx.Response(200, content=b"abc"))
+    respx.get("https://s3.test/b").mock(return_value=httpx.Response(200, content=b"wxyz"))
+    respx.get("https://s3.test/c").mock(return_value=httpx.Response(200, content=b"ab"))   # short
+    (tmp_path / "A1").mkdir()
+    (tmp_path / "A1" / "b.zip").write_bytes(b"wxyz")                                        # already complete
+
+    got = GeoData(token="gp_abc", base_url=BASE).download_reports(["A1", "x"], tmp_path, workers=2)
+    assert (got["downloaded"], got["skipped"], got["bytes"], got["invalid"]) == (1, 1, 3, ["x"])
+    assert [f["name"] for f in got["failed"]] == ["c.txt"]
+    assert (tmp_path / "A1" / "a.pdf").read_bytes() == b"abc"
+    assert not (tmp_path / "A1" / "c.txt").exists() and not (tmp_path / "A1" / "c.txt.part").exists()
+    # the presigned links get no Authorization header
+    assert "Authorization" not in respx.calls[-1].request.headers

@@ -200,6 +200,72 @@ class GeoData:
         """Every file of one document in a corpus (wamex, ebookshop, …), as download links."""
         return self.get("/geo/api/doc/files/", corpus=corpus, key=key)
 
+    def report_manifest(self, anumbers: Iterable[str], chunk: int = 200) -> dict:
+        """Every file of many WAMEX reports, as one manifest: per report its files (name, bytes,
+        download_url valid 7 days), plus `not_found`, `invalid`, `failed` and the totals. Asks
+        the platform `chunk` reports at a time (200 at most)."""
+        anums = list(dict.fromkeys(str(a).strip() for a in anumbers if str(a).strip()))
+        out: dict[str, Any] = {"reports": [], "not_found": [], "invalid": [], "failed": [],
+                               "count": 0, "files": 0, "bytes": 0}
+        for i in range(0, len(anums), chunk):
+            m = self.post("/geo/api/wamex/report_files/batch/", {"anumbers": anums[i:i + chunk]})
+            for k in ("reports", "not_found", "invalid", "failed"):
+                out[k] += m.get(k) or []
+            for k in ("count", "files", "bytes"):
+                out[k] += m.get(k) or 0
+        return out
+
+    def download_reports(self, anumbers: Iterable[str], dest: str | os.PathLike, *, workers: int = 4,
+                         chunk: int = 200, progress: Any = None) -> dict:
+        """Download every file of many WAMEX reports into dest/A<n>/<name>.
+
+        Safe to re-run: a file already on disk at its full size is skipped, and a download goes
+        to a .part file first, so an interrupted run leaves nothing half-written under the real
+        name. Links are fetched `chunk` reports at a time, just before that chunk downloads, so a
+        long run never meets an expired link. `progress(anumber, name, status)` is called per
+        file, status one of "downloaded", "skipped", "failed". Returns what happened:
+        {downloaded, skipped, failed: [{anumber, name, error}], not_found, invalid, bytes}."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        root = Path(dest)
+        anums = list(dict.fromkeys(str(a).strip() for a in anumbers if str(a).strip()))
+        summary: dict[str, Any] = {"downloaded": 0, "skipped": 0, "failed": [], "not_found": [],
+                                   "invalid": [], "bytes": 0}
+
+        def fetch(job: tuple[str, dict]) -> tuple[str, str, str, int, str | None]:
+            anum, f = job
+            out = root / anum / f["name"]
+            if out.exists() and out.stat().st_size == f["bytes"]:
+                return anum, f["name"], "skipped", 0, None
+            out.parent.mkdir(parents=True, exist_ok=True)
+            part = out.with_name(out.name + ".part")
+            try:
+                self.download(f["download_url"], part)
+                if part.stat().st_size != f["bytes"]:
+                    raise GeoDataError(502, f"short download: {part.stat().st_size} of {f['bytes']} bytes")
+                part.replace(out)
+                return anum, f["name"], "downloaded", f["bytes"], None
+            except (GeoDataError, httpx.HTTPError, OSError) as e:
+                part.unlink(missing_ok=True)
+                return anum, f["name"], "failed", 0, str(e)
+
+        for i in range(0, len(anums), chunk):
+            m = self.report_manifest(anums[i:i + chunk], chunk=chunk)
+            summary["not_found"] += m["not_found"]
+            summary["invalid"] += m["invalid"]
+            summary["failed"] += [{"anumber": x["anumber"], "name": None, "error": x["error"]} for x in m["failed"]]
+            jobs = [(r["anumber"], f) for r in m["reports"] for f in r["files"]]
+            with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+                for anum, name, status, nbytes, err in pool.map(fetch, jobs):
+                    if status == "failed":
+                        summary["failed"].append({"anumber": anum, "name": name, "error": err})
+                    else:
+                        summary[status] += 1
+                        summary["bytes"] += nbytes
+                    if progress is not None:
+                        progress(anum, name, status)
+        return summary
+
     # ------------------------------------------------------------ core scans --
     def core_holes(self, state: str | None = None, max_rows: int | None = None) -> Iterator[dict]:
         """HyLogger-scanned drillholes you may see (all public ones, plus your own uploads),
