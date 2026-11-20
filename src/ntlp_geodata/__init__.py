@@ -1,4 +1,4 @@
-"""Python client for the NTLP Geo Data Platform API (https://geo.nlp-tlp.org).
+"""Python client for the AgenticGeoMate API (https://geo.nlp-tlp.org).
 
     from ntlp_geodata import GeoData
     gd = GeoData(token="gp_…")      # a personal API token from https://geo.nlp-tlp.org/account#tokens

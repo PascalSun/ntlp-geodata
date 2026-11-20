@@ -1,6 +1,6 @@
 # ntlp-geodata
 
-Python client for the [NTLP Geo Data Platform](https://geo.nlp-tlp.org): Western Australia's (and
+Python client for [AgenticGeoMate](https://geo.nlp-tlp.org): Western Australia's (and
 increasingly all of Australia's) public geoscience data in one database — drillholes, assays,
 WAMEX reports read page by page, HyLogger core scans, tenure, geophysics — behind one API.
 

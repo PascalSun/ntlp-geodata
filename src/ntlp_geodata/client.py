@@ -31,7 +31,7 @@ def _poly_param(ring: Iterable[Point]) -> str:
 
 
 class GeoData:
-    """A session with the NTLP Geo Data Platform.
+    """A session with AgenticGeoMate.
 
     token     a personal API token (``gp_…``) from https://geo.nlp-tlp.org/account#tokens, or the
               ``GEODATA_TOKEN`` environment variable. The summary, search and tiles need none.
