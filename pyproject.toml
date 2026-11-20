@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "ntlp-geodata"
 version = "0.2.0"
-description = "Python client for the NTLP Geo Data Platform API"
+description = "Python client for the AgenticGeoMate API"
 readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
