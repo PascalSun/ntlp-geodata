@@ -7,7 +7,7 @@ name = "ntlp-geodata"
 version = "0.2.0"
 description = "Python client for the AgenticGeoMate API"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "NTLP, The University of Western Australia" }]
 keywords = ["geoscience", "Western Australia", "drillholes", "WAMEX", "HyLogger", "API client"]
